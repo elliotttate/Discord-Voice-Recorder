@@ -1,0 +1,26 @@
+{
+  "name": "bot_base",
+  "version": "1.2.1",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "deploy": "npx tsc -p . && node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZeldaFan0225/Stable_Horde_Discord.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ZeldaFan0225/Stable_Horde_Discord/issues"
+  },
+  "homepage": "https://github.com/ZeldaFan0225/Stable_Horde_Discord#readme",
+  "dependencies": {
+    "@thunder04/supermap": "^3.0.2",
+    "discord.js": "^14.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.4"
+  }
+}
