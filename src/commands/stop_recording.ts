@@ -5,15 +5,15 @@ import {readFileSync} from "fs"
 
 
 const command_data = new SlashCommandBuilder()
-    .setName("stoprecording")
+    .setName("stop_recording")
     .setDMPermission(false)
-    .setDescription(`stoprecording recording`)
+    .setDescription(`Stop recording`)
 
 
 export default class extends Command {
     constructor() {
         super({
-            name: "stoprecording",
+            name: "stop_recording",
             command_data: command_data.toJSON(),
             staff_only: false,
         })

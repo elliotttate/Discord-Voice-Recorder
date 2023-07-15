@@ -4,27 +4,19 @@ import { existsSync, readdirSync } from "fs"
 import {
     ApplicationCommandData,
     AutocompleteInteraction,
-    ButtonInteraction,
     ChatInputCommandInteraction,
-    MessageContextMenuCommandInteraction,
-    ModalSubmitInteraction,
-    AnySelectMenuInteraction,
-    UserContextMenuCommandInteraction
 } from "discord.js";
 import {join} from "path"
 import {StoreInitOptions, StoreTypes} from "../types";
-import {Modal} from "../classes/modal";
-import { Component } from "../classes/component";
-import { Context } from "../classes/context";
 
-export class Store <T extends StoreTypes> {
+export class Store {
     files_folder: string
-    loaded_classes: SuperMap<string, T extends StoreTypes.COMMANDS ? Command : T extends StoreTypes.COMPONENTS ? Component : T extends StoreTypes.CONTEXTS ? Context : Modal>
+    loaded_classes: SuperMap<string, Command>
     storetype: StoreTypes
     constructor(options: StoreInitOptions) {
         this.files_folder = options.files_folder
         this.storetype = options.storetype
-        this.loaded_classes = new SuperMap<string, T extends StoreTypes.COMMANDS ? Command : T extends StoreTypes.COMPONENTS ? Component : T extends StoreTypes.CONTEXTS ? Context : Modal>()
+        this.loaded_classes = new SuperMap<string, Command>()
         if(options.load_classes_on_init && this.checkDirectory()) this.loadClasses().then(res => this.loaded_classes = res).catch(console.error)
     }
 
@@ -32,13 +24,13 @@ export class Store <T extends StoreTypes> {
         return existsSync(join(__dirname, "../", this.files_folder))
     }
 
-    async loadClasses(): Promise<SuperMap<string, T extends StoreTypes.COMMANDS ? Command : T extends StoreTypes.COMPONENTS ? Component : T extends StoreTypes.CONTEXTS ? Context : Modal>> {
+    async loadClasses(): Promise<SuperMap<string, Command>> {
         if(!this.files_folder) throw new Error("No location for commands given")
         if(!this.checkDirectory()) throw new Error("Unable to find location")
         const files = readdirSync(join(__dirname, "../", this.files_folder))
-        const map = new SuperMap<string, T extends StoreTypes.COMMANDS ? Command : T extends StoreTypes.COMPONENTS ? Component : T extends StoreTypes.CONTEXTS ? Context : Modal>()
+        const map = new SuperMap<string, Command>()
         for (let command_file of files) {
-            const command = new (require(join(__dirname, "../", this.files_folder, command_file)).default)() as (T extends StoreTypes.COMMANDS ? Command : T extends StoreTypes.COMPONENTS ? Component : T extends StoreTypes.CONTEXTS ? Context : Modal)
+            const command = new (require(join(__dirname, "../", this.files_folder, command_file)).default)() as (Command)
             map.set(command.name.toLowerCase(), command)
         }
         this.loaded_classes = map
@@ -63,35 +55,5 @@ export class Store <T extends StoreTypes> {
 
         if(!command) throw new Error("Unable to find command")
         return command as Command
-    }
-
-    async getContext(interaction: MessageContextMenuCommandInteraction | UserContextMenuCommandInteraction): Promise<Context> {
-        if(!this.loaded_classes.size) throw new Error("No commands loaded")
-        if(this.storetype !== StoreTypes.CONTEXTS) throw new Error("Wrong class type loaded")
-        let command_name = interaction.commandName.toLowerCase()
-        const command = this.loaded_classes.get(command_name.toLowerCase())
-
-        if(!command) throw new Error("Unable to find context")
-        return command as Context
-    }
-
-    async getComponent(interaction: ButtonInteraction | AnySelectMenuInteraction): Promise<Component> {
-        if(!this.loaded_classes.size) throw new Error("No commands loaded")
-        if(this.storetype !== StoreTypes.COMPONENTS) throw new Error("Wrong class type loaded")
-
-        const command = (this.loaded_classes as SuperMap<string, Component>).find(c => c.regex.test(interaction.customId))
-
-        if(!command) throw new Error("Unable to find component")
-        return command as Component
-    }
-
-    async getModal(interaction: ModalSubmitInteraction): Promise<Modal> {
-        if(!this.loaded_classes.size) throw new Error("No commands loaded")
-        if(this.storetype !== StoreTypes.MODALS) throw new Error("Wrong class type loaded")
-
-        const command = (this.loaded_classes as SuperMap<string, Modal>).find(c => c.regex.test(interaction.customId))
-
-        if(!command) throw new Error("Unable to find component")
-        return command as Modal
     }
 }

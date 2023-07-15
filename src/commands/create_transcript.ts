@@ -5,7 +5,7 @@ import {readFileSync} from "fs"
 
 
 const command_data = new SlashCommandBuilder()
-    .setName("createtranscript")
+    .setName("create_transcript")
     .setDMPermission(false)
     .setDescription(`End recording`)
     .addStringOption(
@@ -19,7 +19,7 @@ const command_data = new SlashCommandBuilder()
 export default class extends Command {
     constructor() {
         super({
-            name: "createtranscript",
+            name: "create_transcript",
             command_data: command_data.toJSON(),
             staff_only: false,
         })

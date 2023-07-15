@@ -22,12 +22,9 @@ client.login(process.env["DISCORD_TOKEN"])
 
 client.on("ready", async () => {
     client.commands.loadClasses().catch(console.error)
-    client.components.loadClasses().catch(console.error)
-    client.contexts.loadClasses().catch(console.error)
-    client.modals.loadClasses().catch(console.error)
     client.user?.setPresence({activities: [{type: ActivityType.Listening, name: "to Webhead singing in the shower"}], status: PresenceUpdateStatus.DoNotDisturb, })
     console.log(`Ready`)
-    await client.application?.commands.set([...client.commands.createPostBody(), ...client.contexts.createPostBody()]).catch(console.error)
+    await client.application?.commands.set([...client.commands.createPostBody()]).catch(console.error)
 })
 
 client.on("interactionCreate", async (interaction) => {

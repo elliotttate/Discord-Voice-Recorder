@@ -26,7 +26,7 @@ export default class extends Command {
         if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
 
         ctx.interaction.reply({
-            content: `Started recording, use ${await ctx.client.getSlashCommandTag("stoprecording")} to stop the recording`
+            content: `Started recording, use ${await ctx.client.getSlashCommandTag("stop_recording")} to stop the recording`
         })
     }
 }

@@ -6,20 +6,14 @@ import { Config, StoreTypes } from "../types";
 import { AudioRecorder } from "./audioRecorder";
 
 export class DiscordBotClient extends Client {
-	commands: Store<StoreTypes.COMMANDS>;
-	components: Store<StoreTypes.COMPONENTS>;
-	contexts: Store<StoreTypes.CONTEXTS>;
-	modals: Store<StoreTypes.MODALS>;
+	commands: Store;
     config: Config
 	cache: SuperMap<string, any>
 	voiceRecorder: AudioRecorder
 
 	constructor(options: ClientOptions) {
 		super(options);
-		this.commands = new Store<StoreTypes.COMMANDS>({files_folder: "/commands", load_classes_on_init: false, storetype: StoreTypes.COMMANDS});
-		this.components = new Store<StoreTypes.COMPONENTS>({files_folder: "/components", load_classes_on_init: false, storetype: StoreTypes.COMPONENTS});
-		this.contexts = new Store<StoreTypes.CONTEXTS>({files_folder: "/contexts", load_classes_on_init: false, storetype: StoreTypes.CONTEXTS});
-		this.modals = new Store<StoreTypes.MODALS>({files_folder: "/modals", load_classes_on_init: false, storetype: StoreTypes.MODALS});
+		this.commands = new Store({files_folder: "/commands", load_classes_on_init: false, storetype: StoreTypes.COMMANDS});
         this.config = {}
 		this.cache = new SuperMap({
 			intervalTime: 1000
