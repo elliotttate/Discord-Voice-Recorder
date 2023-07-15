@@ -22,11 +22,10 @@ export default class extends Command {
         if(!ctx.interaction.inCachedGuild()) return;
         if(!ctx.interaction.member?.voice.channelId || ctx.interaction.member?.voice.channel?.type !== ChannelType.GuildVoice) return ctx.error({error: "You are currently not in a voice channel"})
 
-        ctx.client.voiceRecorder.startWholeRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+        ctx.client.voiceRecorder.startSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
 
         ctx.interaction.reply({
-            content: "Done",
-            ephemeral: true
+            content: `Started recording, use ${await ctx.client.getSlashCommandTag("stoprecording")} to stop the recording`
         })
     }
 }

@@ -5,15 +5,15 @@ import {readFileSync} from "fs"
 
 
 const command_data = new SlashCommandBuilder()
-    .setName("end")
+    .setName("stoprecording")
     .setDMPermission(false)
-    .setDescription(`End recording`)
+    .setDescription(`stoprecording recording`)
 
 
 export default class extends Command {
     constructor() {
         super({
-            name: "end",
+            name: "stoprecording",
             command_data: command_data.toJSON(),
             staff_only: false,
         })
@@ -25,7 +25,7 @@ export default class extends Command {
 
         await ctx.interaction.reply({content: "Cleaning up...", ephemeral: true})
 
-        await ctx.client.voiceRecorder.endWholeRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+        await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
 
         const path = ctx.client.voiceRecorder.getLatestRecording()
         if(!path) return ctx.error({error: "Unable to process audio"})
@@ -33,7 +33,7 @@ export default class extends Command {
         const file = new AttachmentBuilder(readFileSync(path), {name: `Recording-${ctx.interaction.user.id}-${new Date().toISOString()}.mp3`})
 
         ctx.interaction.editReply({
-            content: "Done",
+            content: "Stopped recording, full recording attached below",
             files: [file]
         })
     }

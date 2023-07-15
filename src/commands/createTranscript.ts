@@ -41,8 +41,6 @@ export default class extends Command {
 
         const audio_url = res.attachments.first()!.url
 
-        console.log(audio_url)
-
         const upload = await fetch(`https://api.fireflies.ai/graphql`,{
             method: "POST",
             headers: {
@@ -50,28 +48,25 @@ export default class extends Command {
                 "Authorization": `Bearer ${process.env["FIREFLIES_TOKEN"]}`
             },
             body: JSON.stringify({
-                query: `
-                    mutation($input: AudioUploadInput) {
-                        uploadAudio(input: $input) {
-                            success
-                            title
-                            message
-                        }
+                query: `mutation($input: AudioUploadInput) {
+    uploadAudio(input: $input) {
+        success
+        title
+        message
+    }
+}`,
+                variables: {
+                    input: {
+                        url: audio_url,
+                        title: ctx.interaction.options.getString("meeting_name", true),
+                        attendees: []
                     }
-                `,
-                input: {
-                    url: audio_url,
-                    title: ctx.interaction.options.getString("meeting_name", true),
-                    attendees: []
                 }
             })
-        }).then(res => res)
-
-        console.log(upload)
-        console.log((await upload.json()).errors[0])
+        }).then(res => res.json())
 
         ctx.interaction.editReply({
-            content: "Audio uploaded",
+            content: upload.data?.uploadAudio?.success ? "Audio uploaded" : "Something went wrong",
             files: []
         })
     }

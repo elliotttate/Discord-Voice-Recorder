@@ -7,8 +7,7 @@ import {
     MessageContextMenuCommandInteraction,
     ModalSubmitInteraction,
     RESTPostAPIApplicationCommandsJSONBody,
-    UserContextMenuCommandInteraction,
-    VoiceState
+    UserContextMenuCommandInteraction
 } from "discord.js";
 import { DiscordBotClient } from "./classes/client";
 

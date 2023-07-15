@@ -19,7 +19,7 @@ export class AudioRecorder {
     }
 
 
-    async startWholeRecording(voiceChannel: VoiceChannel) {
+    /*async startWholeRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return;
 
@@ -94,7 +94,7 @@ export class AudioRecorder {
             userStream.pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
 
             return stream
-             */
+             * /
         })
     }
 
@@ -143,7 +143,7 @@ export class AudioRecorder {
         })
         console.log("done", done)
         if(done) this.convertToMP3()
-    }
+    }*/
 
 
 
@@ -253,8 +253,8 @@ export class AudioRecorder {
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
-        //-loglevel quiet 
-        execSync(`ffmpeg -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../recordings/${this.session_id}.mp3`)}`)
+        
+        execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../recordings/${this.session_id}.mp3`)}`)
 
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
