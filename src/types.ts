@@ -7,7 +7,8 @@ import {
     MessageContextMenuCommandInteraction,
     ModalSubmitInteraction,
     RESTPostAPIApplicationCommandsJSONBody,
-    UserContextMenuCommandInteraction
+    UserContextMenuCommandInteraction,
+    VoiceState
 } from "discord.js";
 import { DiscordBotClient } from "./classes/client";
 
@@ -30,6 +31,9 @@ export interface CommandInitOptions {
     staff_only: boolean,
 }
 
+export interface AudioRecorderInitOptions {
+    client: DiscordBotClient
+}
 
 export interface CustomIDInitOptions {
     name: string,

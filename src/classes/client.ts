@@ -3,6 +3,7 @@ import { Client, ClientOptions } from "discord.js";
 import { readFileSync } from "fs";
 import { Store } from "../stores/store";
 import { Config, StoreTypes } from "../types";
+import { AudioRecorder } from "./audioRecorder";
 
 export class DiscordBotClient extends Client {
 	commands: Store<StoreTypes.COMMANDS>;
@@ -11,6 +12,7 @@ export class DiscordBotClient extends Client {
 	modals: Store<StoreTypes.MODALS>;
     config: Config
 	cache: SuperMap<string, any>
+	voiceRecorder: AudioRecorder
 
 	constructor(options: ClientOptions) {
 		super(options);
@@ -23,6 +25,7 @@ export class DiscordBotClient extends Client {
 			intervalTime: 1000
 		})
         this.loadConfig()
+		this.voiceRecorder = new AudioRecorder({client: this})
 	}
 
     loadConfig() {

@@ -16,7 +16,7 @@ for (const line of readFileSync(`${process.cwd()}/.env`, 'utf8').split(/[\r\n]/)
 }
 
 const client = new DiscordBotClient({
-    intents: ["Guilds"]
+    intents: ["Guilds", "GuildMembers", "GuildVoiceStates"]
 })
 
 
