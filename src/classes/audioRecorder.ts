@@ -60,6 +60,41 @@ export class AudioRecorder {
             .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
 
             return stream
+
+            // continuous audio, sounds like trash
+            /**
+             * 
+             *             const stream = receiver.subscribe(member.user.id, {
+                end: {
+                    behavior: EndBehaviorType.Manual
+                }
+            })
+
+            let buffer: any[] = []
+
+            let userStream = new Readable({
+                read() {
+                    setTimeout(() => {
+                        console.log("pushing")
+                        if (buffer.length > 0) {
+                            this.push(buffer.shift());
+                        }
+                        else {
+                            this.push(SILENCE);
+                        }
+                    }, 0.020833);
+                }
+            })
+
+            stream
+            .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
+            .on("data", chunk => buffer.push(chunk))
+            .on("close", () => userStream.push(null))
+    
+            userStream.pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
+
+            return stream
+             */
         })
     }
 
