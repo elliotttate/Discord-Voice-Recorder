@@ -1,7 +1,7 @@
-import { ChannelType, SlashCommandBuilder, VoiceChannel } from "discord.js";
+import { AttachmentBuilder, ChannelType, SlashCommandBuilder, VoiceChannel } from "discord.js";
 import { Command } from "../classes/command";
 import { CommandContext } from "../classes/commandContext";
-import { AutocompleteContext } from "../classes/autocompleteContext";
+import {readFileSync} from "fs"
 
 
 const command_data = new SlashCommandBuilder()
@@ -23,15 +23,18 @@ export default class extends Command {
         if(!ctx.interaction.inCachedGuild()) return;
         if(!ctx.interaction.member?.voice.channelId || ctx.interaction.member?.voice.channel?.type !== ChannelType.GuildVoice) return ctx.error({error: "You are currently not in a voice channel"})
 
-        ctx.client.voiceRecorder.endRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+        await ctx.interaction.reply({content: "Cleaning up...", ephemeral: true})
 
-        ctx.interaction.reply({
+        await ctx.client.voiceRecorder.endWholeRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+
+        const path = ctx.client.voiceRecorder.getLatestRecording()
+        if(!path) return ctx.error({error: "Unable to process audio"})
+
+        const file = new AttachmentBuilder(readFileSync(path), {name: `Recording-${ctx.interaction.user.id}-${new Date().toISOString()}.mp3`})
+
+        ctx.interaction.editReply({
             content: "Done",
-            ephemeral: true
+            files: [file]
         })
-    }
-
-    override async autocomplete(context: AutocompleteContext): Promise<any> {
-        return context.error()
     }
 }

@@ -1,21 +1,25 @@
 import { VoiceChannel } from "discord.js";
 import { AudioRecorderInitOptions } from "../types";
 import { DiscordBotClient } from "./client";
-import { EndBehaviorType, VoiceConnectionStatus, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
+import { AudioReceiveStream, EndBehaviorType, NoSubscriberBehavior, VoiceConnectionStatus, createAudioPlayer, createAudioResource, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
 import fs from "fs"
 import {join} from "path"
 import {opus} from "prism-media"
 import {execSync} from "child_process"
+import ffmpeg from "fluent-ffmpeg"
 
 export class AudioRecorder {
     client: DiscordBotClient
     session_id?: string
+    streams: AudioReceiveStream[]
     constructor(options: AudioRecorderInitOptions) {
         this.client = options.client
         this.session_id
+        this.streams = []
     }
 
-    async startRecording(voiceChannel: VoiceChannel) {
+
+    async startWholeRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return;
 
@@ -34,9 +38,111 @@ export class AudioRecorder {
             selfDeaf: false
         })
 
-        console.log(this.session_id)
+        if(this.client.config.playIntroMessage) {
+            const player = createAudioPlayer({behaviors: {noSubscriber: NoSubscriberBehavior.Pause}})
+            const resource = createAudioResource(join(__dirname, "/../../intro.mp3"))
+            player.play(resource)
+            connection.subscribe(player)
+            await new Promise((resolve) => setTimeout(() => resolve(player.stop()), 4200))
+        }
 
-        this.session_id = voiceChannel.members.get(this.client.user!.id)?.voice.id
+        const receiver = connection.receiver
+
+        this.streams = voiceChannel.members.filter(m => m.user.id !== this.client.user!.id).map(member => {
+            const stream = receiver.subscribe(member.user.id, {
+                end: {
+                    behavior: EndBehaviorType.Manual
+                }
+            })
+    
+            stream
+            .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
+            .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
+
+            return stream
+        })
+    }
+
+    async endWholeRecording(voiceChannel: VoiceChannel) {
+        const connection = getVoiceConnection(voiceChannel.guild.id);
+        if(!connection) return;
+
+        return await new Promise((resolve) => {
+            connection.once("stateChange", async (_, n) => {
+                if(n.status === VoiceConnectionStatus.Destroyed) {
+                    console.log("recording ended")
+                    await this.mergeAudios()
+                    resolve(true)
+                }
+            })
+
+            this.streams.map(s => s.destroy())
+
+            connection.destroy()
+        })
+    }
+
+    private async mergeAudios() {
+        let audios = fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => f.replace(".pcm", "")),
+            outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
+
+        const done = await new Promise((resolve) => {
+            const ffm = ffmpeg()
+            audios.forEach(a => ffm.addInput(join(__dirname, `/../../temprecordings`, `${a}.pcm`)))
+            ffm.complexFilter([
+                {
+                    filter: "amix",
+                    options: {
+                        inputs: audios.length
+                    }
+                }
+            ])
+            .inputFormat("s16le")
+            .outputFormat("s16le")
+            .output(outputStream)
+            .on("end", () => {
+                console.log("done merging")
+                resolve(true)
+            })
+            .run()
+        })
+        console.log("done", done)
+        if(done) this.convertToMP3()
+    }
+
+
+
+
+    /*
+        Audio snippets after each other
+    */
+
+    async startSnippetRecording(voiceChannel: VoiceChannel) {
+        const test = getVoiceConnection(voiceChannel.guild.id);
+        if(test) return;
+
+        var dir = join(__dirname, `/../../temprecordings`);
+
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        this.session_id = `${Date.now()}`
+        
+        const connection = joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guild.id,
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: false
+        })
+
+        if(this.client.config.playIntroMessage) {
+            const player = createAudioPlayer({behaviors: {noSubscriber: NoSubscriberBehavior.Pause}})
+            const resource = createAudioResource(join(__dirname, "/../../intro.mp3"))
+            player.play(resource)
+            connection.subscribe(player)
+            await new Promise((resolve) => setTimeout(() => resolve(player.stop()), 4200))
+        }
 
         const receiver = connection.receiver
 
@@ -54,48 +160,56 @@ export class AudioRecorder {
             .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${Date.now()}.pcm`)))
         })
         connection.receiver.speaking.on("end", console.log)
-        
-        connection.on("stateChange", (_, n) => {
-            if(n.status === VoiceConnectionStatus.Destroyed) {
-                console.log("recording ended")
-                this.mergeRecordings()
-            }
-        })
     }
 
-    async endRecording(voiceChannel: VoiceChannel) {
+    async endSnippetRecording(voiceChannel: VoiceChannel) {
         const connection = getVoiceConnection(voiceChannel.guild.id);
         if(!connection) return;
 
-        connection.destroy()
+        return await new Promise((resolve) => {
+            connection.once("stateChange", async (_, n) => {
+                if(n.status === VoiceConnectionStatus.Destroyed) {
+                    console.log("recording ended")
+                    await this.mergeSnippets()
+                    resolve(true)
+                }
+            })
+
+            connection.destroy()
+        })
     }
 
-    private mergeRecordings() {
-        let chunks = fs.readdirSync(join(__dirname, `/../../temprecordings`)),
+    private async mergeSnippets() {
+        let chunks = fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => f.replace(".pcm", "")),
             inputStream,
             currentfile: any,
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
 
         chunks.sort((a, b) => Number(b) - Number(a))
-        
-        const appendFiles = () => {
-            if (!chunks.length) {
-                outputStream.end();
-                this.convertToMP3()
-                return;
+
+        const done = await new Promise((resolve) => {
+            const appendFiles = () => {
+                if (!chunks.length) {
+                    outputStream.end();
+                    resolve(true)
+                    return;
+                }
+            
+                currentfile = join(__dirname, `/../../temprecordings`, `${chunks.shift()!}.pcm`)
+    
+                inputStream = fs.createReadStream(currentfile);
+            
+                inputStream.pipe(outputStream, { end: false });
+            
+                inputStream.on('end', function() {
+                    appendFiles();
+                });
             }
+            
+            appendFiles()
+        })
         
-            currentfile = join(__dirname, `/../../temprecordings`, chunks.shift()!)
-            inputStream = fs.createReadStream(currentfile);
-        
-            inputStream.pipe(outputStream, { end: false });
-        
-            inputStream.on('end', function() {
-                appendFiles();
-            });
-        }
-        
-        appendFiles()
+        if(done) this.convertToMP3()
     }
 
     private convertToMP3() {
@@ -104,13 +218,17 @@ export class AudioRecorder {
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
+        //-loglevel quiet 
+        execSync(`ffmpeg -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../recordings/${this.session_id}.mp3`)}`)
 
-        execSync(`ffmpeg -loglevel quiet -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../recordings/${this.session_id}.mp3`)}`)
-
-        console.log(join(__dirname, `/../../temprecordings`))
-
-        //fs.rmSync(join(__dirname, `/../../temprecordings`), {recursive: true})
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
         this.session_id = undefined
+    }
+
+    getLatestRecording() {
+        const latest = fs.readdirSync(join(__dirname, `/../../recordings`)).map(f => f.replace(".mp3", "")).sort((a, b) => Number(b) - Number(a)).at(0)
+        if(!latest) return null
+        return join(__dirname, `/../../recordings`, `${latest}.mp3`)
     }
 }
