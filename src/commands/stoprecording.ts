@@ -23,9 +23,10 @@ export default class extends Command {
         if(!ctx.interaction.inCachedGuild()) return;
         if(!ctx.interaction.member?.voice.channelId || ctx.interaction.member?.voice.channel?.type !== ChannelType.GuildVoice) return ctx.error({error: "You are currently not in a voice channel"})
 
-        await ctx.interaction.reply({content: "Cleaning up...", ephemeral: true})
+        await ctx.interaction.reply({content: "Cleaning up..."})
 
-        await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+        const recording = await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+        if(!recording) return ctx.error({error: "Not recording or something else went wrong"})
 
         const path = ctx.client.voiceRecorder.getLatestRecording()
         if(!path) return ctx.error({error: "Unable to process audio"})

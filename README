@@ -1,0 +1,8 @@
+# Voice Chat AudioRecorder
+
+## Requirements
+
+- NodeJS V18 or above
+- ffmpeg installed and usable in terminal
+
+## While recording 

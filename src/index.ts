@@ -2,10 +2,7 @@ import {readFileSync} from "fs"
 import {ActivityType, ApplicationCommandType, InteractionType, PresenceUpdateStatus} from "discord.js";
 import { DiscordBotClient } from "./classes/client";
 import { handleCommands } from "./handlers/commandHandler";
-import { handleComponents } from "./handlers/componentHandler";
-import { handleModals } from "./handlers/modalHandler";
 import { handleAutocomplete } from "./handlers/autocompleteHandler";
-import { handleContexts } from "./handlers/contextHandler";
 
 const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/
 for (const line of readFileSync(`${process.cwd()}/.env`, 'utf8').split(/[\r\n]/)) {
@@ -40,20 +37,11 @@ client.on("interactionCreate", async (interaction) => {
                 case ApplicationCommandType.ChatInput: {
                     return await handleCommands(interaction, client);
                 }
-                case ApplicationCommandType.User:
-                case ApplicationCommandType.Message: {
-                    return await handleContexts(interaction, client);
-                }
+                default: return;
             }
-        };
-        case InteractionType.MessageComponent: {
-			return await handleComponents(interaction, client);
         };
         case InteractionType.ApplicationCommandAutocomplete: {
 			return await handleAutocomplete(interaction, client);
-        };
-        case InteractionType.ModalSubmit: {
-			return await handleModals(interaction, client);
         };
     }
 })

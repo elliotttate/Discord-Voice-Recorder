@@ -6,7 +6,6 @@ import fs from "fs"
 import {join} from "path"
 import {opus} from "prism-media"
 import {execSync} from "child_process"
-import ffmpeg from "fluent-ffmpeg"
 
 export class AudioRecorder {
     client: DiscordBotClient
@@ -154,7 +153,9 @@ export class AudioRecorder {
 
     async startSnippetRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
-        if(test) return;
+        if(test) return false;
+        
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
         var dir = join(__dirname, `/../../temprecordings`);
 
@@ -195,11 +196,13 @@ export class AudioRecorder {
             .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${Date.now()}.pcm`)))
         })
         connection.receiver.speaking.on("end", console.log)
+
+        return true
     }
 
     async endSnippetRecording(voiceChannel: VoiceChannel) {
         const connection = getVoiceConnection(voiceChannel.guild.id);
-        if(!connection) return;
+        if(!connection) return false;
 
         return await new Promise((resolve) => {
             connection.once("stateChange", async (_, n) => {
