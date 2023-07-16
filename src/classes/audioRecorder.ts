@@ -223,7 +223,7 @@ export class AudioRecorder {
             currentfile: any,
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
 
-        chunks.sort((a, b) => Number(b) - Number(a))
+        chunks.sort((a, b) => Number(a) - Number(b))
 
         const done = await new Promise((resolve) => {
             const appendFiles = () => {
@@ -268,5 +268,34 @@ export class AudioRecorder {
         const latest = fs.readdirSync(join(__dirname, `/../../recordings`)).map(f => f.replace(".mp3", "")).sort((a, b) => Number(b) - Number(a)).at(0)
         if(!latest) return null
         return join(__dirname, `/../../recordings`, `${latest}.mp3`)
+    }
+
+    async uploadAudio(title: string, url: string) {
+        console.log(title)
+        console.log(url)
+        console.log(`Bearer ${process.env["FIREFLIES_TOKEN"]}`)
+        return await fetch(`https://api.fireflies.ai/graphql`,{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env["FIREFLIES_TOKEN"]}`
+            },
+            body: JSON.stringify({
+                query: `mutation($input: AudioUploadInput) {
+    uploadAudio(input: $input) {
+        success
+        title
+        message
+    }
+}`,
+                variables: {
+                    input: {
+                        url,
+                        title,
+                        attendees: []
+                    }
+                }
+            })
+        }).then(res => res.json())
     }
 }

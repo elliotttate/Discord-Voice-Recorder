@@ -1,7 +1,6 @@
-import { AttachmentBuilder, ChannelType, SlashCommandBuilder, VoiceChannel } from "discord.js";
+import { ChannelType, SlashCommandBuilder, VoiceChannel } from "discord.js";
 import { Command } from "../classes/command";
 import { CommandContext } from "../classes/commandContext";
-import {readFileSync} from "fs"
 
 
 const command_data = new SlashCommandBuilder()
@@ -31,11 +30,15 @@ export default class extends Command {
         const path = ctx.client.voiceRecorder.getLatestRecording()
         if(!path) return ctx.error({error: "Unable to process audio"})
 
-        const file = new AttachmentBuilder(readFileSync(path), {name: `Recording-${ctx.interaction.user.id}-${new Date().toISOString()}.mp3`})
+        const name = path.split("/").at(-1)
+        const url = process.env["DOMAIN"] + `/${name}`
+        console.log(url)
+        const upload = await ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url)
+        console.log(upload)
+
 
         ctx.interaction.editReply({
-            content: "Stopped recording, full recording attached below",
-            files: [file]
+            content: `Stopped recording, audio uploaded (available at: ${url})`
         })
     }
 }
