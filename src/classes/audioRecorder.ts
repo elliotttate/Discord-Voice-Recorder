@@ -195,7 +195,6 @@ export class AudioRecorder {
             .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
             .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${Date.now()}.pcm`)))
         })
-        connection.receiver.speaking.on("end", console.log)
 
         return true
     }
@@ -271,9 +270,6 @@ export class AudioRecorder {
     }
 
     async uploadAudio(title: string, url: string) {
-        console.log(title)
-        console.log(url)
-        console.log(`Bearer ${process.env["FIREFLIES_TOKEN"]}`)
         return await fetch(`https://api.fireflies.ai/graphql`,{
             method: "POST",
             headers: {
