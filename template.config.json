@@ -2,5 +2,6 @@
     "staff_roles": [
         "926795718222553098"
     ],
-    "playIntroMessage": true
+    "playIntroMessage": true,
+    "useOpenAIWhisper": true
 }
