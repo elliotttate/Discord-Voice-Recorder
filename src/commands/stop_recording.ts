@@ -34,7 +34,24 @@ export default class extends Command {
 
             const file = new AttachmentBuilder(readFileSync(join(__dirname, `/../../transcripts/${name}.txt`)), {name: `Transcript-${name}.txt`})
 
-            await msg.reply({content: "This is the transcript", files: [file]})
+            const chatgpt = await ctx.client.openai.createChatCompletion({
+                model: "gpt-3.5-turbo-16k",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a AI conversation tool, you summarize the given conversation and provide the most important bullet points."
+                    },
+                    {
+                        role: "user",
+                        content: `Summarize the follwing conversation and provide bullet points:\n\n${readFileSync(join(__dirname, `/../../transcripts/${name}.txt`)).toString("utf-8")}`
+                    }
+                ]
+            })
+
+            const summary = chatgpt.data.choices[0]!.message?.content ?? "No summary"
+
+            const summary_file = new AttachmentBuilder(Buffer.from(summary), {name: `summary-${name}.txt`})
+            await msg.reply({content: "This is the transcript", files: [file, summary_file]})
         } else {
             const recording = await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Not recording or something else went wrong"})
