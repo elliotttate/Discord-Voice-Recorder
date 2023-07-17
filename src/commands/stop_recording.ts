@@ -30,11 +30,11 @@ export default class extends Command {
         const path = ctx.client.voiceRecorder.getLatestRecording()
         if(!path) return ctx.error({error: "Unable to process audio"})
 
-        await new Promise((resolve) => setTimeout(() => resolve(true), 1000 * 5))
 
         const name = path.split("/").at(-1)
         const url = process.env["DOMAIN"] + `/${name}`
         const upload = await ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url)
+        setTimeout(() => ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url), 1000 * 20)
 
         if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed, audio available at ${url}`, codeblock: false})
 
