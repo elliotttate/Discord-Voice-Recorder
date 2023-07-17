@@ -4,12 +4,14 @@ import { readFileSync } from "fs";
 import { Store } from "../stores/store";
 import { Config, StoreTypes } from "../types";
 import { AudioRecorder } from "./audioRecorder";
+import { OpenAIApi, Configuration } from "openai";
 
 export class DiscordBotClient extends Client {
 	commands: Store;
     config: Config
 	cache: SuperMap<string, any>
 	voiceRecorder: AudioRecorder
+	openai: OpenAIApi
 
 	constructor(options: ClientOptions) {
 		super(options);
@@ -20,6 +22,7 @@ export class DiscordBotClient extends Client {
 		})
         this.loadConfig()
 		this.voiceRecorder = new AudioRecorder({client: this})
+		this.openai = new OpenAIApi(new Configuration({apiKey: process.env["OPENAI_TOKEN"]}))
 	}
 
     loadConfig() {

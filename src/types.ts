@@ -75,5 +75,6 @@ export interface AutocompleteContextInitOptions extends BaseContextInitOptions {
 
 export interface Config {
     staff_roles?: string[],
-    playIntroMessage?: boolean
+    playIntroMessage?: boolean,
+    useOpenAIWhisper?: boolean
 }

@@ -1,4 +1,4 @@
-import { VoiceChannel } from "discord.js";
+import { VoiceChannel, } from "discord.js";
 import { AudioRecorderInitOptions } from "../types";
 import { DiscordBotClient } from "./client";
 import { AudioReceiveStream, EndBehaviorType, NoSubscriberBehavior, VoiceConnectionStatus, createAudioPlayer, createAudioResource, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
@@ -152,7 +152,11 @@ export class AudioRecorder {
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
         var dir = join(__dirname, `/../../temprecordings`);
-
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        var dir = join(__dirname, `/../../transcripts`);
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
@@ -185,16 +189,21 @@ export class AudioRecorder {
                 }
             })
 
+            let audio_id = `${Date.now()}-${userId}`
+
             stream
             .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
-            .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${Date.now()}-${userId}.pcm`)))
-            .on("finish", console.log)
+            .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${audio_id}.pcm`)))
+            .on("finish", () => {
+                execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/${audio_id}.pcm`)} ${join(__dirname, `/../../temprecordings/${audio_id}.mp3`)}`)
+                fs.rmSync(join(__dirname, `/../../temprecordings`, `${audio_id}.pcm`))
+            })
         })
 
         return true
     }
 
-    async endWhisperSnippetRecording(voiceChannel: VoiceChannel) {
+    async endWhisperSnippetRecording(voiceChannel: VoiceChannel, transcript_name: string) {
         const connection = getVoiceConnection(voiceChannel.guild.id);
         if(!connection) return false;
 
@@ -202,7 +211,7 @@ export class AudioRecorder {
             connection.once("stateChange", async (_, n) => {
                 if(n.status === VoiceConnectionStatus.Destroyed) {
                     console.log("recording ended")
-                    await this.processWhisperSnippets()
+                    await this.processWhisperSnippets(transcript_name)
                     resolve(true)
                 }
             })
@@ -211,8 +220,119 @@ export class AudioRecorder {
         })
     }
 
-    async processWhisperSnippets() {
+    async processWhisperSnippets(transcript_name: string) {
+        await this.mergeMP3s()
+        const snippets = fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => {
+            const [timestamp, userid] = f.replace(".mp3", "").split("-")
+            return {timestamp: Number(timestamp ?? "0"), userid: userid!}
+        })
 
+        const cut_together: {userid: string, snippets: number[]}[] = []
+        snippets.sort((a, b) => a.timestamp - b.timestamp).forEach((snippet) => {
+            if(cut_together.at(-1)?.userid === snippet.userid) cut_together.at(-1)?.snippets.push(snippet.timestamp)
+            else cut_together.push({userid: snippet.userid, snippets: [snippet.timestamp]})
+        })
+        
+
+        for(let snippets of cut_together) {
+            if(snippets.snippets.length <= 1) continue;
+            await this.concatAudios(snippets.snippets.map(s => `${s}-${snippets.userid}.mp3`), `${snippets.snippets[0]}-${snippets.userid}-concat.mp3`)
+        }
+
+        const transcribe_files = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0"))
+
+        const transcript: string[] = []
+
+        console.log(transcribe_files)
+
+        async function transcribe(client: DiscordBotClient) {
+            if(!transcribe_files.length) return;
+
+            const audio = transcribe_files.shift()
+
+            //@ts-ignore
+            const transcription = await client.openai.createTranscription(fs.createReadStream(join(__dirname, `/../../temprecordings`, audio)), "whisper-1").catch(console.error)
+            const userid = audio?.replace(".mp3", "").split("-")[1]!
+            const user = await client.users.fetch(userid).catch(console.error)
+
+            transcript.push(`${user?.username ?? "Unknown User"} said\n------------------------------\n${transcription?.data.text}`)
+            
+            await new Promise((resolve) => setTimeout(() => resolve(true), 1000 * 2))
+
+            await transcribe(client)
+        }
+
+        await transcribe(this.client)
+
+        const final_transcript = transcript.join("\n\n")
+
+        fs.writeFileSync(join(__dirname, `/../../transcripts/${transcript_name}.txt`), final_transcript)
+        
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
+
+        return final_transcript
+    }
+
+    async concatAudios(fileNames: string[], out_name: string) {
+        let inputStream,
+            currentfile: any,
+            outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${out_name}`)),
+            audionames = fileNames.slice()
+
+        await new Promise((resolve) => {
+            const appendFiles = () => {
+                if (!fileNames.length) {
+                    outputStream.end();
+                    resolve(true)
+                    return;
+                }
+            
+                currentfile = join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`)
+    
+                inputStream = fs.createReadStream(currentfile);
+            
+                inputStream.pipe(outputStream, { end: false });
+            
+                inputStream.on('end', function() {
+                    appendFiles();
+                });
+            }
+            
+            appendFiles()
+        })
+
+        audionames.forEach(a => fs.rmSync(join(__dirname, `/../../temprecordings`, a)))
+    }
+
+
+    async mergeMP3s() {
+        let inputStream,
+            currentfile: any,
+            outputStream = fs.createWriteStream(join(__dirname, `/../../recordings/${Date.now()}.mp3`)),
+            audionames = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0")),
+            fileNames = audionames.slice()
+
+        await new Promise((resolve) => {
+            const appendFiles = () => {
+                if (!fileNames.length) {
+                    outputStream.end();
+                    resolve(true)
+                    return;
+                }
+            
+                currentfile = join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`)
+    
+                inputStream = fs.createReadStream(currentfile);
+            
+                inputStream.pipe(outputStream, { end: false });
+            
+                inputStream.on('end', function() {
+                    appendFiles();
+                });
+            }
+            
+            appendFiles()
+        })
     }
 
 

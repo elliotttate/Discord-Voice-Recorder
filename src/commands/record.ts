@@ -23,8 +23,13 @@ export default class extends Command {
         if(!ctx.interaction.member?.voice.channelId || ctx.interaction.member?.voice.channel?.type !== ChannelType.GuildVoice) return ctx.error({error: "You are currently not in a voice channel"})
         await ctx.interaction.deferReply()
 
-        const recording = await ctx.client.voiceRecorder.startSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
-        if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
+        if(ctx.client.config.useOpenAIWhisper) {
+            const recording = await ctx.client.voiceRecorder.startWhisperSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+            if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
+        } else {
+            const recording = await ctx.client.voiceRecorder.startSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+            if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
+        }
 
         ctx.interaction.editReply({
             content: `Started recording, use ${await ctx.client.getSlashCommandTag("stop_recording")} to stop the recording`
