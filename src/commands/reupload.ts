@@ -38,8 +38,8 @@ export default class extends Command {
         
         if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed`})
 
-        ctx.interaction.editReply({
-            content: `Stopped recording, audio uploaded (available at: ${url})`
+        ctx.interaction.reply({
+            content: `Uploaded audio to fireflies again: ${url}`
         })
     }
 }

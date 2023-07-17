@@ -145,6 +145,76 @@ export class AudioRecorder {
     }*/
 
 
+    async startWhisperSnippetRecording(voiceChannel: VoiceChannel) {
+        const test = getVoiceConnection(voiceChannel.guild.id);
+        if(test) return false;
+        
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
+
+        var dir = join(__dirname, `/../../temprecordings`);
+
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        this.session_id = `${Date.now()}`
+        
+        const connection = joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guild.id,
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: false
+        })
+
+        if(this.client.config.playIntroMessage) {
+            const player = createAudioPlayer({behaviors: {noSubscriber: NoSubscriberBehavior.Pause}})
+            const resource = createAudioResource(join(__dirname, "/../../intro.mp3"))
+            player.play(resource)
+            connection.subscribe(player)
+            await new Promise((resolve) => setTimeout(() => resolve(player.stop()), 4200))
+        }
+
+        const receiver = connection.receiver
+
+        //https://github.com/discordjs/voice/issues/209
+        connection.receiver.speaking.on("start", userId => {
+            const stream = receiver.subscribe(userId, {
+                end: {
+                    behavior: EndBehaviorType.AfterSilence,
+                    duration: 100
+                }
+            })
+
+            stream
+            .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
+            .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${Date.now()}-${userId}.pcm`)))
+            .on("finish", console.log)
+        })
+
+        return true
+    }
+
+    async endWhisperSnippetRecording(voiceChannel: VoiceChannel) {
+        const connection = getVoiceConnection(voiceChannel.guild.id);
+        if(!connection) return false;
+
+        return await new Promise((resolve) => {
+            connection.once("stateChange", async (_, n) => {
+                if(n.status === VoiceConnectionStatus.Destroyed) {
+                    console.log("recording ended")
+                    await this.processWhisperSnippets()
+                    resolve(true)
+                }
+            })
+
+            connection.destroy()
+        })
+    }
+
+    async processWhisperSnippets() {
+
+    }
+
 
 
     /*
@@ -287,8 +357,7 @@ export class AudioRecorder {
                 variables: {
                     input: {
                         url,
-                        title,
-                        attendees: []
+                        title
                     }
                 }
             })
