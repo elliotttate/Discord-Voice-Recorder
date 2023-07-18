@@ -3,6 +3,5 @@ dist
 .env
 logs
 config.json
-recordings
+public
 temprecordings
-transcript

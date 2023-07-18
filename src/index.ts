@@ -34,7 +34,7 @@ app.register(fastify_cors, {
 });
 
 app.register(fastify_static, {
-    root: join(__dirname, '../recordings')
+    root: join(__dirname, '../public')
 });
 
 app.listen({port: Number(process.env["API_PORT"]), host: "localhost"}, (err, address) => {

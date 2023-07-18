@@ -32,7 +32,7 @@ export default class extends Command {
             const name = Date.now().toString()
             await ctx.client.voiceRecorder.endWhisperSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel, name)
 
-            const file = new AttachmentBuilder(readFileSync(join(__dirname, `/../../transcripts/${name}.txt`)), {name: `Transcript-${name}.txt`})
+            const file = new AttachmentBuilder(readFileSync(join(__dirname, `/../../public/transcripts/${name}.txt`)), {name: `Transcript-${name}.txt`})
 
             const chatgpt = await ctx.client.openai.createChatCompletion({
                 model: "gpt-3.5-turbo-16k",
@@ -43,7 +43,7 @@ export default class extends Command {
                     },
                     {
                         role: "user",
-                        content: `Summarize the follwing conversation and provide bullet points:\n\n${readFileSync(join(__dirname, `/../../transcripts/${name}.txt`)).toString("utf-8")}`
+                        content: `Summarize the follwing conversation and provide bullet points:\n\n${readFileSync(join(__dirname, `/../../public/transcripts/${name}.txt`)).toString("utf-8")}`
                     }
                 ]
             })
@@ -51,7 +51,7 @@ export default class extends Command {
             const summary = chatgpt.data.choices[0]!.message?.content ?? "No summary"
 
             const summary_file = new AttachmentBuilder(Buffer.from(summary), {name: `summary-${name}.txt`})
-            await msg.reply({content: "This is the transcript", files: [file, summary_file]})
+            await msg.reply({content: `This is the transcript it is also available at ${process.env["DOMAIN"] + `/transcripts/${name}.txt`}`, files: [file, summary_file]})
         } else {
             const recording = await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Not recording or something else went wrong"})
@@ -59,8 +59,8 @@ export default class extends Command {
             const path = ctx.client.voiceRecorder.getLatestRecording()
             if(!path) return ctx.error({error: "Unable to process audio"})
 
-            const name = path.split("/").at(-1)
-            const url = process.env["DOMAIN"] + `/${name}`
+            const name = path.split(/(\/|\\)/).at(-1)
+            const url = process.env["DOMAIN"] + `/recordings/${name}`
             const upload = await ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url)
             setTimeout(() => ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url), 1000 * 20)
 

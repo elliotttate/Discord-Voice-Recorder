@@ -144,6 +144,10 @@ export class AudioRecorder {
         if(done) this.convertToMP3()
     }*/
 
+    /*
+        Whisper transcript
+    */
+
 
     async startWhisperSnippetRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
@@ -156,7 +160,7 @@ export class AudioRecorder {
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        var dir = join(__dirname, `/../../transcripts`);
+        var dir = join(__dirname, `/../../public/transcripts`);
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
@@ -221,7 +225,7 @@ export class AudioRecorder {
     }
 
     async processWhisperSnippets(transcript_name: string) {
-        await this.mergeMP3s()
+        await this.mergeWhisperMP3s()
         const snippets = fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => {
             const [timestamp, userid] = f.replace(".mp3", "").split("-")
             return {timestamp: Number(timestamp ?? "0"), userid: userid!}
@@ -236,14 +240,12 @@ export class AudioRecorder {
 
         for(let snippets of cut_together) {
             if(snippets.snippets.length <= 1) continue;
-            await this.concatAudios(snippets.snippets.map(s => `${s}-${snippets.userid}.mp3`), `${snippets.snippets[0]}-${snippets.userid}-concat.mp3`)
+            await this.concatWhisperAudios(snippets.snippets.map(s => `${s}-${snippets.userid}.mp3`), `${snippets.snippets[0]}-${snippets.userid}-concat.mp3`)
         }
 
         const transcribe_files = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0"))
 
         const transcript: string[] = []
-
-        console.log(transcribe_files)
 
         async function transcribe(client: DiscordBotClient) {
             if(!transcribe_files.length) return;
@@ -266,14 +268,14 @@ export class AudioRecorder {
 
         const final_transcript = transcript.join("\n\n")
 
-        fs.writeFileSync(join(__dirname, `/../../transcripts/${transcript_name}.txt`), final_transcript)
+        fs.writeFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), final_transcript)
         
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
         return final_transcript
     }
 
-    async concatAudios(fileNames: string[], out_name: string) {
+    async concatWhisperAudios(fileNames: string[], out_name: string) {
         let inputStream,
             currentfile: any,
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${out_name}`)),
@@ -305,10 +307,10 @@ export class AudioRecorder {
     }
 
 
-    async mergeMP3s() {
+    async mergeWhisperMP3s() {
         let inputStream,
             currentfile: any,
-            outputStream = fs.createWriteStream(join(__dirname, `/../../recordings/${Date.now()}.mp3`)),
+            outputStream = fs.createWriteStream(join(__dirname, `/../../public/recordings/${Date.now()}.mp3`)),
             audionames = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0")),
             fileNames = audionames.slice()
 
@@ -335,6 +337,12 @@ export class AudioRecorder {
         })
     }
 
+
+    getLatestTranscript() {
+        const latest = fs.readdirSync(join(__dirname, `/../../public/transcripts`)).map(f => f.replace(".txt", "")).sort((a, b) => Number(b) - Number(a)).at(0)
+        if(!latest) return null
+        return join(__dirname, `/../../public/transcripts`, `${latest}.txt`)
+    }
 
 
     /*
@@ -440,7 +448,7 @@ export class AudioRecorder {
     }
 
     private convertToMP3() {
-        var dir = join(__dirname, `/../../recordings`);
+        var dir = join(__dirname, `/../../public/recordings`);
 
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
@@ -454,9 +462,9 @@ export class AudioRecorder {
     }
 
     getLatestRecording() {
-        const latest = fs.readdirSync(join(__dirname, `/../../recordings`)).map(f => f.replace(".mp3", "")).sort((a, b) => Number(b) - Number(a)).at(0)
+        const latest = fs.readdirSync(join(__dirname, `/../../public/recordings`)).map(f => f.replace(".mp3", "")).sort((a, b) => Number(b) - Number(a)).at(0)
         if(!latest) return null
-        return join(__dirname, `/../../recordings`, `${latest}.mp3`)
+        return join(__dirname, `/../../public/recordings`, `${latest}.mp3`)
     }
 
     async uploadAudio(title: string, url: string) {

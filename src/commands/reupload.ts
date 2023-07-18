@@ -27,13 +27,14 @@ export default class extends Command {
     }
 
     override async run(ctx: CommandContext): Promise<any> {
+        if(ctx.client.config.useOpenAIWhisper) return ctx.error({error: "Transcripts are generated using whisper and not uploaded to fireflies"})
         const input = ctx.interaction.options.getString("audio_link", true)
         const name = input.split("/").at(-1) ?? "merge.mp3"
-        const path = join(__dirname, "/../../recordings", name)
+        const path = join(__dirname, "/../../public/recordings", name)
 
         if(!existsSync(path)) return ctx.error({error: "Unable to find audio"})
         
-        const url = process.env["DOMAIN"] + `/${name}`
+        const url = process.env["DOMAIN"] + `/recordings/${name}`
         const upload = await ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url)
         
         if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed`})
