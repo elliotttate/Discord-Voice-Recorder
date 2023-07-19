@@ -11,10 +11,12 @@ export class AudioRecorder {
     client: DiscordBotClient
     session_id?: string
     streams: AudioReceiveStream[]
+    available: boolean
     constructor(options: AudioRecorderInitOptions) {
         this.client = options.client
         this.session_id
         this.streams = []
+        this.available = true
     }
 
 
@@ -152,6 +154,7 @@ export class AudioRecorder {
     async startWhisperSnippetRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return false;
+        this.available = false
         
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
@@ -266,6 +269,7 @@ export class AudioRecorder {
         
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
+        this.available = true
         return fs.readFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), "utf-8")
     }
 
@@ -346,6 +350,7 @@ export class AudioRecorder {
     async startSnippetRecording(voiceChannel: VoiceChannel) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return false;
+        this.available = false
         
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
@@ -452,6 +457,7 @@ export class AudioRecorder {
 
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
+        this.available = true
         this.session_id = undefined
     }
 

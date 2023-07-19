@@ -49,9 +49,15 @@ export default class extends Command {
             })
 
             const summary = chatgpt.data.choices[0]!.message?.content ?? "No summary"
+            
+            const path = ctx.client.voiceRecorder.getLatestRecording()
+            if(!path) return ctx.error({error: "Unable to process audio"})
+
+            const audioname = path.split(/(\/|\\)/).at(-1)
+            const url = process.env["DOMAIN"] + `/recordings/${audioname}`
 
             const summary_file = new AttachmentBuilder(Buffer.from(summary), {name: `summary-${name}.txt`})
-            await msg.reply({content: `This is the transcript it is also available at ${process.env["DOMAIN"] + `/transcripts/${name}.txt`}`, files: [file, summary_file]})
+            await msg.reply({content: `This is the transcript, it is also available at ${process.env["DOMAIN"] + `/transcripts/${name}.txt`}\nThe audio is available at ${url}`, files: [file, summary_file]})
         } else {
             const recording = await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Not recording or something else went wrong"})
