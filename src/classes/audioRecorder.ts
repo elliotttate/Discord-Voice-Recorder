@@ -244,8 +244,8 @@ export class AudioRecorder {
         }
 
         const transcribe_files = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0"))
-
-        const transcript: string[] = []
+        
+        fs.writeFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), `Transcript ${new Date().toUTCString()}`)
 
         async function transcribe(client: DiscordBotClient) {
             if(!transcribe_files.length) return;
@@ -256,23 +256,17 @@ export class AudioRecorder {
             const transcription = await client.openai.createTranscription(fs.createReadStream(join(__dirname, `/../../temprecordings`, audio)), "whisper-1").catch(console.error)
             const userid = audio?.replace(".mp3", "").split("-")[1]!
             const user = await client.users.fetch(userid).catch(console.error)
-
-            transcript.push(`${user?.username ?? "Unknown User"} said\n------------------------------\n${transcription?.data.text}`)
-            
+            fs.appendFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), `\n\n${user?.username ?? "Unknown User"} said\n------------------------------\n${transcription?.data.text}`)
             await new Promise((resolve) => setTimeout(() => resolve(true), 1000 * 2))
 
             await transcribe(client)
         }
 
         await transcribe(this.client)
-
-        const final_transcript = transcript.join("\n\n")
-
-        fs.writeFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), final_transcript)
         
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 
-        return final_transcript
+        return fs.readFileSync(join(__dirname, `/../../public/transcripts/${transcript_name}.txt`), "utf-8")
     }
 
     async concatWhisperAudios(fileNames: string[], out_name: string) {

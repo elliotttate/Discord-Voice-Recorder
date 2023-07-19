@@ -27,9 +27,9 @@ export default class extends Command {
         await ctx.interaction.reply({content: "Cleaning up..."})
         
         if(ctx.client.config.useOpenAIWhisper) {
-
-            const msg = await ctx.interaction.editReply({content: "Processing transcript..."})
             const name = Date.now().toString()
+
+            const msg = await ctx.interaction.editReply({content: `Processing transcript...\nLive version can be fount at ${process.env["DOMAIN"] + `/transcripts/${name}.txt`}`})
             await ctx.client.voiceRecorder.endWhisperSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel, name)
 
             const file = new AttachmentBuilder(readFileSync(join(__dirname, `/../../public/transcripts/${name}.txt`)), {name: `Transcript-${name}.txt`})
@@ -43,7 +43,7 @@ export default class extends Command {
                     },
                     {
                         role: "user",
-                        content: `Summarize the follwing conversation and provide bullet points:\n\n${readFileSync(join(__dirname, `/../../public/transcripts/${name}.txt`)).toString("utf-8")}`
+                        content: `Summarize the following conversation and provide bullet points:\n\n${readFileSync(join(__dirname, `/../../public/transcripts/${name}.txt`)).toString("utf-8")}`
                     }
                 ]
             })
