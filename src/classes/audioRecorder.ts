@@ -6,6 +6,7 @@ import fs from "fs"
 import {join} from "path"
 import {opus} from "prism-media"
 import {execSync} from "child_process"
+import Ffmpeg from "fluent-ffmpeg";
 
 export class AudioRecorder {
     client: DiscordBotClient
@@ -280,6 +281,14 @@ export class AudioRecorder {
             audionames = fileNames.slice()
 
         await new Promise((resolve) => {
+            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`))
+            fileNames.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}`)))
+            ffm.mergeToFile(join(__dirname, `/../../temprecordings/${out_name}`), join(__dirname, `/../../temp`))
+            ffm.on("end", () => resolve(true))
+        })
+
+
+        /*await new Promise((resolve) => {
             const appendFiles = () => {
                 if (!fileNames.length) {
                     outputStream.end();
@@ -299,7 +308,7 @@ export class AudioRecorder {
             }
             
             appendFiles()
-        })
+        })*/
 
         audionames.forEach(a => fs.rmSync(join(__dirname, `/../../temprecordings`, a)))
     }
@@ -312,7 +321,16 @@ export class AudioRecorder {
             audionames = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0")),
             fileNames = audionames.slice()
 
+        console.log(fileNames)
+        
         await new Promise((resolve) => {
+            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`))
+            fileNames.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}`)))
+            ffm.mergeToFile(join(__dirname, `/../../public/recordings/${Date.now()}.mp3`), join(__dirname, `/../../temp`))
+            ffm.on("end", () => resolve(true))
+        })
+
+        /*await new Promise((resolve) => {
             const appendFiles = () => {
                 if (!fileNames.length) {
                     outputStream.end();
@@ -332,7 +350,7 @@ export class AudioRecorder {
             }
             
             appendFiles()
-        })
+        })*/
     }
 
 
@@ -420,8 +438,15 @@ export class AudioRecorder {
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
 
         chunks.sort((a, b) => Number(a) - Number(b))
-
+        
         const done = await new Promise((resolve) => {
+            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${chunks.shift()!}.pcm`))
+            chunks.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}.pcm`)))
+            ffm.mergeToFile(join(__dirname, `/../../temprecordings/merge.pcm`), join(__dirname, `/../../temp`))
+            ffm.on("end", () => resolve(true))
+        })
+
+        /*const done = await new Promise((resolve) => {
             const appendFiles = () => {
                 if (!chunks.length) {
                     outputStream.end();
@@ -441,7 +466,7 @@ export class AudioRecorder {
             }
             
             appendFiles()
-        })
+        })*/
         
         if(done) this.convertToMP3()
     }
