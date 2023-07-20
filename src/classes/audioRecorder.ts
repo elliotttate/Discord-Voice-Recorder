@@ -280,6 +280,8 @@ export class AudioRecorder {
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${out_name}`)),
             audionames = fileNames.slice()
 
+        if(!audionames.length) return;
+
         await new Promise((resolve) => {
             const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`))
             fileNames.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}`)))
@@ -317,11 +319,11 @@ export class AudioRecorder {
     async mergeWhisperMP3s() {
         let inputStream,
             currentfile: any,
-            outputStream = fs.createWriteStream(join(__dirname, `/../../public/recordings/${Date.now()}.mp3`)),
+            //outputStream = fs.createWriteStream(join(__dirname, `/../../public/recordings/${Date.now()}.mp3`)),
             audionames = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0")),
             fileNames = audionames.slice()
 
-        console.log(fileNames)
+        if(!fileNames.length) return;
         
         await new Promise((resolve) => {
             const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${fileNames.shift()!}`))
@@ -436,17 +438,24 @@ export class AudioRecorder {
             inputStream,
             currentfile: any,
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
-
+            
         chunks.sort((a, b) => Number(a) - Number(b))
+
+        if(!chunks?.length) return;
+
         
-        const done = await new Promise((resolve) => {
-            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${chunks.shift()!}.pcm`))
+        /*const done = await new Promise((resolve) => {
+            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${chunks.shift()}.pcm`)).inputFormat("s16le")
+            console.log(chunks)
             chunks.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}.pcm`)))
             ffm.mergeToFile(join(__dirname, `/../../temprecordings/merge.pcm`), join(__dirname, `/../../temp`))
-            ffm.on("end", () => resolve(true))
-        })
+            ffm.on("end", () => {
+                console.log("ended")
+                resolve(true)
+            })
+        })*/
 
-        /*const done = await new Promise((resolve) => {
+        const done = await new Promise((resolve) => {
             const appendFiles = () => {
                 if (!chunks.length) {
                     outputStream.end();
@@ -466,7 +475,7 @@ export class AudioRecorder {
             }
             
             appendFiles()
-        })*/
+        })
         
         if(done) this.convertToMP3()
     }
@@ -478,7 +487,7 @@ export class AudioRecorder {
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../recordings/${this.session_id}.mp3`)}`)
+        execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../public/recordings/${this.session_id}.mp3`)}`)
 
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
 

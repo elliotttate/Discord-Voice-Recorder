@@ -26,7 +26,7 @@ export interface StoreInitOptions {
 
 export interface CommandInitOptions {
     name: string,
-    command_data: RESTPostAPIApplicationCommandsJSONBody,
+    command_data?: RESTPostAPIApplicationCommandsJSONBody,
     staff_only: boolean,
 }
 
