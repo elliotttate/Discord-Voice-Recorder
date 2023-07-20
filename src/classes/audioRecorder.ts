@@ -275,9 +275,9 @@ export class AudioRecorder {
     }
 
     async concatWhisperAudios(fileNames: string[], out_name: string) {
-        let inputStream,
-            currentfile: any,
-            outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${out_name}`)),
+        let //inputStream,
+            //currentfile: any,
+            //outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${out_name}`)),
             audionames = fileNames.slice()
 
         if(!audionames.length) return;
@@ -317,8 +317,8 @@ export class AudioRecorder {
 
 
     async mergeWhisperMP3s() {
-        let inputStream,
-            currentfile: any,
+        let //inputStream,
+            //currentfile: any,
             //outputStream = fs.createWriteStream(join(__dirname, `/../../public/recordings/${Date.now()}.mp3`)),
             audionames = fs.readdirSync(join(__dirname, `/../../temprecordings`)).sort((a, b) => Number(a.split("-")[0] ?? "0") - Number(b.split("-")[0] ?? "0")),
             fileNames = audionames.slice()
@@ -521,6 +521,27 @@ export class AudioRecorder {
                         url,
                         title
                     }
+                }
+            })
+        }).then(res => res.json())
+    }
+
+    async findTranscript(title: string) {
+        return await fetch(`https://api.fireflies.ai/graphql`,{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env["FIREFLIES_TOKEN"]}`
+            },
+            body: JSON.stringify({
+                query: `query ($title: String) {
+    transcripts (title: $title) {
+        title
+        transcript_url
+    }
+}`,
+                variables: {
+                    title
                 }
             })
         }).then(res => res.json())

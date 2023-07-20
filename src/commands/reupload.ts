@@ -35,12 +35,31 @@ export default class extends Command {
         if(!existsSync(path)) return ctx.error({error: "Unable to find audio"})
         
         const url = process.env["DOMAIN"] + `/recordings/${name}`
-        const upload = await ctx.client.voiceRecorder.uploadAudio(`Meeting ${new Date().toUTCString()}`, url)
+        const meetingname = `Meeting ${new Date().toUTCString()}`
+        const upload = await ctx.client.voiceRecorder.uploadAudio(meetingname, url)
         
         if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed`})
 
-        ctx.interaction.reply({
-            content: `Uploaded audio to fireflies again: ${url}`
+        const meeting = await ctx.client.voiceRecorder.findTranscript(meetingname)
+        console.log(meeting.data.transcripts)
+
+        const msg = await ctx.interaction.reply({
+            content: `Uploaded audio to fireflies again: ${url}`,
+            fetchReply: true
         })
+
+        let max = 0
+
+        function sendTranscriptURL() {
+            setTimeout(async () => {
+                if(max >= 5) return msg.reply({content: "Transcript can be viewed on fireflies after the transcription is done"})
+                const transcript = await ctx.client.voiceRecorder.findTranscript(meetingname).then(res => res?.data?.transcripts?.at(0))
+                ++max
+                if(!transcript) return sendTranscriptURL()
+                else msg.reply({content: `Fireflies Transcript available at ${transcript.transcript_url}`})
+            }, 1000 * 30)
+        }
+
+        sendTranscriptURL()
     }
 }
