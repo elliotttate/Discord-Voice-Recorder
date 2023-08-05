@@ -21,6 +21,7 @@
     "@discordjs/voice": "^0.16.0",
     "@fastify/cors": "^8.3.0",
     "@fastify/static": "^6.10.2",
+    "@kirdock/discordjs-voice-recorder": "^1.0.4",
     "@thunder04/supermap": "^3.0.2",
     "discord.js": "^14.11.0",
     "fastify": "^4.19.2",

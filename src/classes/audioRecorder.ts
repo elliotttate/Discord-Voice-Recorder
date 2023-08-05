@@ -7,17 +7,49 @@ import {join} from "path"
 import {opus} from "prism-media"
 import {execSync} from "child_process"
 import Ffmpeg from "fluent-ffmpeg";
+//import { Transform } from 'stream';
+import { VoiceRecorder } from "@kirdock/discordjs-voice-recorder";
+
+/*class FillSilenceStream extends Transform {
+    private frameSize: number;
+    private silenceBuffer: Buffer;
+    private isSilence: boolean;
+
+    constructor(frameSize: number) {
+        super();
+        this.frameSize = frameSize;
+        this.silenceBuffer = Buffer.alloc(frameSize);
+        this.isSilence = true;
+    }
+
+    override _transform(chunk: Buffer, encoding: string, callback: Function) {
+        if (chunk.length === 0) {
+            if (!this.isSilence) {
+                this.isSilence = true;
+                this.push(this.silenceBuffer);
+            }
+        } else {
+            if (this.isSilence) {
+                this.isSilence = false;
+            }
+            this.push(chunk);
+        }
+        callback();
+    }
+}*/
 
 export class AudioRecorder {
     client: DiscordBotClient
     session_id?: string
     streams: AudioReceiveStream[]
     available: boolean
+    voicerecorder: VoiceRecorder | null
     constructor(options: AudioRecorderInitOptions) {
         this.client = options.client
         this.session_id
         this.streams = []
         this.available = true
+        this.voicerecorder = null
     }
 
 
@@ -51,53 +83,26 @@ export class AudioRecorder {
         const receiver = connection.receiver
 
         this.streams = voiceChannel.members.filter(m => m.user.id !== this.client.user!.id).map(member => {
+            const frameSize = 960; // Adjust frame size as needed
+            const outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`));
+
             const stream = receiver.subscribe(member.user.id, {
                 end: {
                     behavior: EndBehaviorType.Manual
                 }
             })
     
-            stream
-            .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
-            .pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
-
-            return stream
-
-            // continuous audio, sounds like trash
-            /**
-             * 
-             *             const stream = receiver.subscribe(member.user.id, {
-                end: {
-                    behavior: EndBehaviorType.Manual
-                }
-            })
-
-            let buffer: any[] = []
-
-            let userStream = new Readable({
-                read() {
-                    setTimeout(() => {
-                        console.log("pushing")
-                        if (buffer.length > 0) {
-                            this.push(buffer.shift());
-                        }
-                        else {
-                            this.push(SILENCE);
-                        }
-                    }, 0.020833);
-                }
-            })
+            const fillSilenceStream = new FillSilenceStream(frameSize);
 
             stream
-            .pipe(new opus.Decoder({frameSize: 960, channels: 2, rate: 48000}))
-            .on("data", chunk => buffer.push(chunk))
-            .on("close", () => userStream.push(null))
-    
-            userStream.pipe(fs.createWriteStream(join(__dirname, `/../../temprecordings/${member.user.id}.pcm`)))
+                .pipe(new opus.Decoder({ frameSize: frameSize, channels: 2, rate: 48000 }))
+                .pipe(fillSilenceStream)
+                .pipe(outputStream);
 
-            return stream
-             * /
+            return stream;
         })
+
+        return true;
     }
 
     async endWholeRecording(voiceChannel: VoiceChannel) {
@@ -124,7 +129,7 @@ export class AudioRecorder {
             outputStream = fs.createWriteStream(join(__dirname, `/../../temprecordings/merge.pcm`))
 
         const done = await new Promise((resolve) => {
-            const ffm = ffmpeg()
+            const ffm = Ffmpeg()
             audios.forEach(a => ffm.addInput(join(__dirname, `/../../temprecordings`, `${a}.pcm`)))
             ffm.complexFilter([
                 {
@@ -146,6 +151,62 @@ export class AudioRecorder {
         console.log("done", done)
         if(done) this.convertToMP3()
     }*/
+
+    async startKirdockRecording(voiceChannel: VoiceChannel) {
+        const test = getVoiceConnection(voiceChannel.guild.id);
+        if(test) return false;
+        this.available = false
+
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
+        
+        var dir = join(__dirname, `/../../temprecordings`);
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        var dir = join(__dirname, `/../../public/transcripts`);
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        this.session_id = `${Date.now()}`
+        
+        const connection = joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guild.id,
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: false
+        })
+
+        if(this.client.config.playIntroMessage) {
+            const player = createAudioPlayer({behaviors: {noSubscriber: NoSubscriberBehavior.Pause}})
+            const resource = createAudioResource(join(__dirname, "/../../intro.mp3"))
+            player.play(resource)
+            connection.subscribe(player)
+            await new Promise((resolve) => setTimeout(() => resolve(player.stop()), 4200))
+        }
+
+        this.voicerecorder = new VoiceRecorder({maxUserRecordingLength: 1000}, this.client);
+
+        this.voicerecorder.startRecording(connection);
+
+        return true;
+    }
+
+    async endKirdockRecording(voiceChannel: VoiceChannel) {
+        if(!this.voicerecorder) return false;
+        
+        const test = getVoiceConnection(voiceChannel.guild.id);
+        if(!test) return false;
+
+        await this.voicerecorder.getRecordedVoice(fs.createWriteStream(join(__dirname, `/../../public/recordings`, `${Date.now()}.mp3`)), voiceChannel.guildId, "single", 1000)
+
+        this.voicerecorder.stopRecording(test)
+
+        this.voicerecorder = null
+
+        return true;
+    }
 
     /*
         Whisper transcript
@@ -443,18 +504,6 @@ export class AudioRecorder {
 
         if(!chunks?.length) return;
 
-        
-        /*const done = await new Promise((resolve) => {
-            const ffm = Ffmpeg(join(__dirname, `/../../temprecordings`, `${chunks.shift()}.pcm`)).inputFormat("s16le")
-            console.log(chunks)
-            chunks.forEach(f => ffm.input(join(__dirname, `/../../temprecordings`, `${f}.pcm`)))
-            ffm.mergeToFile(join(__dirname, `/../../temprecordings/merge.pcm`), join(__dirname, `/../../temp`))
-            ffm.on("end", () => {
-                console.log("ended")
-                resolve(true)
-            })
-        })*/
-
         const done = await new Promise((resolve) => {
             const appendFiles = () => {
                 if (!chunks.length) {
@@ -489,7 +538,15 @@ export class AudioRecorder {
         
         execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/merge.pcm`)} ${join(__dirname, `/../../public/recordings/${this.session_id}.mp3`)}`)
 
-        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
+        const tempdir = join(__dirname, "/../../logs/", Date.now().toString())
+        if (!fs.existsSync(tempdir)){
+            fs.mkdirSync(tempdir, { recursive: true });
+        }
+
+        fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => {
+            execSync(`ffmpeg -loglevel quiet  -f s16le -ar 48000 -ac 2 -i ${join(__dirname, `/../../temprecordings/${f}`)} ${join(tempdir, `${f.replace(".pcm", "")}.mp3`)}`)
+            fs.rmSync(join(__dirname, `/../../temprecordings`, f))
+        })
 
         this.available = true
         this.session_id = undefined

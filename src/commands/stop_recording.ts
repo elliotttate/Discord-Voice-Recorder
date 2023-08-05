@@ -58,6 +58,37 @@ export default class extends Command {
 
             const summary_file = new AttachmentBuilder(Buffer.from(summary), {name: `summary-${name}.txt`})
             await msg.reply({content: `This is the transcript, it is also available at ${process.env["DOMAIN"] + `/transcripts/${name}.txt`}\nThe audio is available at ${url}`, files: [file, summary_file]})
+        } else if (ctx.client.config.useKirdockRecording) {
+            const recording = await ctx.client.voiceRecorder.endKirdockRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+            if(!recording) return ctx.error({error: "Not recording or something else went wrong"})
+            
+            const path = ctx.client.voiceRecorder.getLatestRecording()
+            if(!path) return ctx.error({error: "Unable to process audio"})
+
+            const name = path.split(/(\/|\\)/).at(-1)
+            const url = process.env["DOMAIN"] + `/recordings/${name}`
+            const meetingname = `Meeting ${new Date().toUTCString()}`
+            const upload = await ctx.client.voiceRecorder.uploadAudio(meetingname, url)
+
+            if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed, audio available at ${url}`, codeblock: false})
+
+            const msg = await ctx.interaction.editReply({
+                content: `Stopped recording, available at ${url}`
+            })
+            
+            let max = 0
+
+            function sendTranscriptURL() {
+                setTimeout(async () => {
+                    if(max >= 5) return msg.reply({content: "Transcript can be viewed on fireflies after the transcription is done"})
+                    const transcript = await ctx.client.voiceRecorder.findTranscript(meetingname).then(res => res?.data?.transcripts?.at(0))
+                    ++max
+                    if(!transcript) return sendTranscriptURL()
+                    else msg.reply({content: `Fireflies Transcript available at ${transcript.transcript_url}`})
+                }, 1000 * 30)
+            }
+
+            sendTranscriptURL()
         } else {
             const recording = await ctx.client.voiceRecorder.endSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Not recording or something else went wrong"})

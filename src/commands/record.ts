@@ -28,6 +28,9 @@ export default class extends Command {
         if(ctx.client.config.useOpenAIWhisper) {
             const recording = await ctx.client.voiceRecorder.startWhisperSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
+        } else if(ctx.client.config.useKirdockRecording) {
+            const recording = await ctx.client.voiceRecorder.startKirdockRecording(ctx.interaction.member.voice.channel as VoiceChannel)
+            if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
         } else {
             const recording = await ctx.client.voiceRecorder.startSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
