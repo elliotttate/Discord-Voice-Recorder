@@ -186,7 +186,7 @@ export class AudioRecorder {
             await new Promise((resolve) => setTimeout(() => resolve(player.stop()), 4200))
         }
 
-        this.voicerecorder = new VoiceRecorder({maxUserRecordingLength: 1000}, this.client);
+        this.voicerecorder = new VoiceRecorder({maxUserRecordingLength: 10000000, maxRecordTimeMs: 10000}, this.client);
 
         this.voicerecorder.startRecording(connection);
 
@@ -199,11 +199,13 @@ export class AudioRecorder {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(!test) return false;
 
-        await this.voicerecorder.getRecordedVoice(fs.createWriteStream(join(__dirname, `/../../public/recordings`, `${Date.now()}.mp3`)), voiceChannel.guildId, "single", 1000)
+        await this.voicerecorder.getRecordedVoice(fs.createWriteStream(join(__dirname, `/../../public/recordings`, `${Date.now()}.mp3`)), voiceChannel.guildId, "single", 10000000)
 
         this.voicerecorder.stopRecording(test)
+        test.destroy()
 
         this.voicerecorder = null
+        this.available = true
 
         return true;
     }
