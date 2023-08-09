@@ -64,3 +64,11 @@ client.on("interactionCreate", async (interaction) => {
         };
     }
 })
+
+client.on("voiceStateUpdate", async (o, n) => {
+    if(!client.voiceRecorder.available && client.voiceRecorder.init_id) {
+        if(o.channelId !== n.channelId && o.channelId === client.voiceRecorder.voice_id && o.member?.id === client.voiceRecorder.init_id) {
+            o.channel?.send(`<@${client.voiceRecorder.init_id}> don't forget to use ${await client.getSlashCommandTag("stop_recording")} when you are done`)
+        }
+    }
+})

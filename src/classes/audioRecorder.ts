@@ -1,4 +1,4 @@
-import { VoiceChannel, } from "discord.js";
+import { ChatInputCommandInteraction, VoiceChannel, } from "discord.js";
 import { AudioRecorderInitOptions } from "../types";
 import { DiscordBotClient } from "./client";
 import { AudioReceiveStream, EndBehaviorType, NoSubscriberBehavior, VoiceConnectionStatus, createAudioPlayer, createAudioResource, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
@@ -44,12 +44,16 @@ export class AudioRecorder {
     streams: AudioReceiveStream[]
     available: boolean
     voicerecorder: VoiceRecorder | null
+    init_id: string | null
+    voice_id: string | null
     constructor(options: AudioRecorderInitOptions) {
         this.client = options.client
         this.session_id
         this.streams = []
         this.available = true
         this.voicerecorder = null
+        this.init_id = null
+        this.voice_id = null
     }
 
 
@@ -152,10 +156,12 @@ export class AudioRecorder {
         if(done) this.convertToMP3()
     }*/
 
-    async startKirdockRecording(voiceChannel: VoiceChannel) {
+    async startKirdockRecording(voiceChannel: VoiceChannel, interaction: ChatInputCommandInteraction) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return false;
-        this.available = false
+        this.available = false;
+        this.init_id = interaction.user.id
+        this.voice_id = voiceChannel.id
 
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
         
@@ -206,6 +212,8 @@ export class AudioRecorder {
 
         this.voicerecorder = null
         this.available = true
+        this.init_id = null
+        this.voice_id = null
 
         return true;
     }
