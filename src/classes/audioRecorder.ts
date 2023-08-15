@@ -205,17 +205,24 @@ export class AudioRecorder {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(!test) return false;
 
-        await this.voicerecorder.getRecordedVoice(fs.createWriteStream(join(__dirname, `/../../public/recordings`, `${Date.now()}.mp3`)), voiceChannel.guildId, "single", 10000000)
+        await this.voicerecorder.getRecordedVoice(fs.createWriteStream(join(__dirname, `/../../public/recordings`, `${Date.now()}.mp3`)), voiceChannel.guildId, "single", 10000000).catch(console.error)
 
-        this.voicerecorder.stopRecording(test)
-        test.destroy()
+        this.voicerecorder?.stopRecording(test)
 
-        this.voicerecorder = null
-        this.available = true
-        this.init_id = null
-        this.voice_id = null
+        return await new Promise((resolve) => {
+            test.once("stateChange", async (_, n) => {
+                if(n.status === VoiceConnectionStatus.Destroyed) {
+                    console.log("recording ended")
+                    this.voicerecorder = null
+                    this.available = true
+                    this.init_id = null
+                    this.voice_id = null
+                    resolve(true)
+                } resolve(false)
+            })
 
-        return true;
+            test.destroy()
+        })
     }
 
     /*
