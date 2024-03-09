@@ -1,4 +1,4 @@
-import { AttachmentBuilder, ChannelType, SlashCommandBuilder, VoiceChannel } from "discord.js";
+import { AttachmentBuilder, ChannelType, SlashCommandBuilder, SlashCommandStringOption, VoiceChannel } from "discord.js";
 import { Command } from "../classes/command";
 import { CommandContext } from "../classes/commandContext";
 import {readFileSync} from "fs"
@@ -9,6 +9,11 @@ const command_data = new SlashCommandBuilder()
     .setName("stop_recording")
     .setDMPermission(false)
     .setDescription(`Stop recording`)
+    .addStringOption(
+        new SlashCommandStringOption()
+        .setName("title")
+        .setDescription("The recording title")
+    )
 
 
 export default class extends Command {
@@ -67,9 +72,10 @@ export default class extends Command {
 
             const name = path.split(/(\/|\\)/).at(-1)
             const url = process.env["DOMAIN"] + `/recordings/${name}`
-            const meetingname = `Meeting ${new Date().toUTCString()}`
+            const meetingname = `Meeting ${ctx.interaction.options.getString("title") || new Date().toUTCString()}`
             const upload = await ctx.client.voiceRecorder.uploadAudio(meetingname, url)
 
+            if(upload.errors) console.log(upload.errors[0].extensions.metadata, upload.errors[0])
             if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed, audio available at ${url}`, codeblock: false})
 
             const msg = await ctx.interaction.editReply({
@@ -101,6 +107,7 @@ export default class extends Command {
             const meetingname = `Meeting ${new Date().toUTCString()}`
             const upload = await ctx.client.voiceRecorder.uploadAudio(meetingname, url)
 
+            if(upload.errors) console.log(upload.errors[0].extensions.metadata, upload.errors[0])
             if(!upload?.data?.uploadAudio?.success) return ctx.error({error: `Uploading audio failed, audio available at ${url}`, codeblock: false})
 
             const msg = await ctx.interaction.editReply({

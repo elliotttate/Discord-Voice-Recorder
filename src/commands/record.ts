@@ -20,8 +20,6 @@ export default class extends Command {
 
     override async run(ctx: CommandContext): Promise<any> {
         if(!ctx.interaction.inCachedGuild()) return;
-        console.log(ctx.interaction.member.voice)
-        console.log(ctx.interaction.member?.voice.channel?.type)
         if(!ctx.interaction.member?.voice.channelId || ctx.interaction.member?.voice.channel?.type !== ChannelType.GuildVoice) return ctx.error({error: "You are currently not in a voice channel"})
         await ctx.interaction.deferReply()
 
@@ -31,7 +29,7 @@ export default class extends Command {
             const recording = await ctx.client.voiceRecorder.startWhisperSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)
             if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
         } else if(ctx.client.config.useKirdockRecording) {
-            const recording = await ctx.client.voiceRecorder.startKirdockRecording(ctx.interaction.member.voice.channel as VoiceChannel, ctx.interaction)
+            const recording = await ctx.client.voiceRecorder.startKirdockRecording(ctx.interaction.member.voice.channel as VoiceChannel, ctx.interaction.user.id)
             if(!recording) return ctx.error({error: "Already recording or something else went wrong"})
         } else {
             const recording = await ctx.client.voiceRecorder.startSnippetRecording(ctx.interaction.member.voice.channel as VoiceChannel)

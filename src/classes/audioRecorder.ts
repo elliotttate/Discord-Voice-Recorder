@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, VoiceChannel, } from "discord.js";
+import { VoiceChannel, } from "discord.js";
 import { AudioRecorderInitOptions } from "../types";
 import { DiscordBotClient } from "./client";
 import { AudioReceiveStream, EndBehaviorType, NoSubscriberBehavior, VoiceConnectionStatus, createAudioPlayer, createAudioResource, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
@@ -156,11 +156,11 @@ export class AudioRecorder {
         if(done) this.convertToMP3()
     }*/
 
-    async startKirdockRecording(voiceChannel: VoiceChannel, interaction: ChatInputCommandInteraction) {
+    async startKirdockRecording(voiceChannel: VoiceChannel, user_id: string) {
         const test = getVoiceConnection(voiceChannel.guild.id);
         if(test) return false;
         this.available = false;
-        this.init_id = interaction.user.id
+        this.init_id = user_id
         this.voice_id = voiceChannel.id
 
         fs.readdirSync(join(__dirname, `/../../temprecordings`)).map(f => fs.rmSync(join(__dirname, `/../../temprecordings`, f)))
@@ -583,7 +583,8 @@ export class AudioRecorder {
                 "Authorization": `Bearer ${process.env["FIREFLIES_TOKEN"]}`
             },
             body: JSON.stringify({
-                query: `mutation($input: AudioUploadInput) {
+                query:
+`mutation uploadAudio($input: AudioUploadInput) {
     uploadAudio(input: $input) {
         success
         title

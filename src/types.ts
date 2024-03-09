@@ -77,5 +77,6 @@ export interface Config {
     staff_roles?: string[],
     playIntroMessage?: boolean,
     useOpenAIWhisper?: boolean,
-    useKirdockRecording?: boolean
+    useKirdockRecording?: boolean,
+    autoStartRecording?: boolean,
 }
